@@ -7,6 +7,9 @@ __all__ = (
     "create_lcs",
     "create_lcs_df",
     "create_lcs_df_matrices",
+    'create_lcs_ddf',
+    'create_lcs_ddf_matrices',
+    'create_lcs_ddf_vectors'
 )
 
 import importlib
@@ -157,3 +160,48 @@ def create_lcs_df(lcs_df_matrices, lcs_df_vectors, solver):
         return result
 
     return lcs
+
+
+def create_lcs_ddf(lcs_ddf_matrices, lcs_ddf_vectors, solver):
+    def lcs(reference, sample, weak_absorption=True, m=None, n=None, **kwargs):
+        matrices = lcs_ddf_matrices(reference)
+        vectors = lcs_ddf_vectors(sample)
+
+        kwargs = {"a": 1, "b": 2} | kwargs
+
+        if all(i is not None for i in (m, n)):
+            # result = implicit_tracking(matrices, vectors, m, n, **kwargs)
+            pass
+            # TODO nin17: lcs_df tracking
+        else:
+            kwargs.pop("a", None)
+            kwargs.pop("b", None)
+            result = solver(matrices, vectors, **kwargs)
+        # result = solver(matrices, vectors, **kwargs)
+
+        if weak_absorption:
+            return result
+        result[..., 1:] /= result[..., :1]
+        return result
+
+    return lcs
+
+def create_lcs_ddf_matrices(xp):
+    def lcs_ddf_matrices(reference):
+        assert reference.ndim >= 3
+        gradient_x, gradient_y = xp.gradient(reference, axis=(-2, -1))
+        gradient_xx, gradient_xy = xp.gradient(gradient_x,axis=(-2, -1))
+        gradient_yx, gradient_yy = xp.gradient(gradient_y,axis=(-2, -1))
+        matrices = xp.stack((reference, -gradient_x, -gradient_y, -gradient_xx, -gradient_yx, -gradient_yy), axis=-1)
+        order = tuple(range(0, matrices.ndim - 4)) + (-3, -2, -4, -1)
+        return matrices.transpose(order)
+        # return xp.moveaxis(matrices, -4, -2) # TODO nin17: see if transpose is faster
+
+    return lcs_ddf_matrices
+
+def create_lcs_ddf_vectors():
+    def lcs_vectors(sample):
+        assert sample.ndim >= 3
+        return sample.transpose(tuple(range(0, sample.ndim - 3)) + (-2, -1, -3))
+
+    return lcs_vectors
