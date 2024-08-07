@@ -49,7 +49,7 @@ def create_similarity_st(xp, swv):
 
 
 def create_similarity_svt(xp, swv):
-    def similarity_svt(img1, img2, m, n)
+    def similarity_svt(img1, img2, m, n):
         # TODO nin17: docstring
         _m, _n = 2 * m + 1, 2 * n + 1
         norm1 = xp.linalg.norm(img1, axis=-3, keepdims=True)

@@ -1,7 +1,7 @@
 """_summary_
 """
 
-__all__ = ("lcs", "lcs_df","lcs_ddf")
+__all__ = ("lcs", "lcs_df","lcs_ddf","lcs_ddf_colored")
 
 import numpy as np
 from scipy import ndimage
@@ -15,6 +15,7 @@ from ...src.phase_retrieval.implicit import (
     create_lcs_ddf,
     create_lcs_ddf_matrices,
     create_lcs_ddf_vectors,
+    create_lcs_ddf_colored
 )
 from ...src.phase_retrieval.implicit.utils import (
     create_implicit_tracking,
@@ -23,6 +24,7 @@ from ...src.phase_retrieval.implicit.utils import (
     create_normal,
     create_normal_stack,
     create_tikhonov_stack,
+    prep_coloration,
 )
 
 normal_stack = create_normal_stack(np)
@@ -55,4 +57,9 @@ lcs_ddf_matrices = create_lcs_ddf_matrices(np)
 lcs_ddf_vectors = create_lcs_ddf_vectors()
 
 lcs_ddf = create_lcs_ddf(lcs_ddf_matrices, lcs_ddf_vectors, lstsq_solver)
+
+coloration = prep_coloration(np)
+
+lcs_ddf_colored = create_lcs_ddf_colored(lcs_ddf_matrices, lcs_ddf_vectors, lstsq_solver, coloration)
+
 

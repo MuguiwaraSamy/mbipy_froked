@@ -9,7 +9,8 @@ __all__ = (
     "create_lcs_df_matrices",
     'create_lcs_ddf',
     'create_lcs_ddf_matrices',
-    'create_lcs_ddf_vectors'
+    'create_lcs_ddf_vectors',
+    'create_lcs_ddf_colored'
 )
 
 import importlib
@@ -139,6 +140,7 @@ def create_lcs_df_matrices(xp, laplace):
 
 def create_lcs_df(lcs_df_matrices, lcs_df_vectors, solver):
     def lcs(reference, sample, weak_absorption=True, m=None, n=None, **kwargs):
+
         matrices = lcs_df_matrices(reference)
         vectors = lcs_df_vectors(sample)
 
@@ -163,7 +165,7 @@ def create_lcs_df(lcs_df_matrices, lcs_df_vectors, solver):
 
 
 def create_lcs_ddf(lcs_ddf_matrices, lcs_ddf_vectors, solver):
-    def lcs(reference, sample, weak_absorption=True, m=None, n=None, **kwargs):
+    def lcs_ddf(reference, sample, weak_absorption=True, m=None, n=None, **kwargs):
         matrices = lcs_ddf_matrices(reference)
         vectors = lcs_ddf_vectors(sample)
 
@@ -184,7 +186,7 @@ def create_lcs_ddf(lcs_ddf_matrices, lcs_ddf_vectors, solver):
         result[..., 1:] /= result[..., :1]
         return result
 
-    return lcs
+    return lcs_ddf
 
 def create_lcs_ddf_matrices(xp):
     def lcs_ddf_matrices(reference):
@@ -192,16 +194,69 @@ def create_lcs_ddf_matrices(xp):
         gradient_x, gradient_y = xp.gradient(reference, axis=(-2, -1))
         gradient_xx, gradient_xy = xp.gradient(gradient_x,axis=(-2, -1))
         gradient_yx, gradient_yy = xp.gradient(gradient_y,axis=(-2, -1))
-        matrices = xp.stack((reference, -gradient_x, -gradient_y, -gradient_xx, -gradient_yx, -gradient_yy), axis=-1)
+        matrices = xp.stack((reference, -gradient_x, -gradient_y, gradient_xx, gradient_yx, gradient_yy), axis=-1)
         order = tuple(range(0, matrices.ndim - 4)) + (-3, -2, -4, -1)
         return matrices.transpose(order)
-        # return xp.moveaxis(matrices, -4, -2) # TODO nin17: see if transpose is faster
+        
 
     return lcs_ddf_matrices
 
 def create_lcs_ddf_vectors():
-    def lcs_vectors(sample):
+    def lcs_ddf_vectors(sample):
         assert sample.ndim >= 3
         return sample.transpose(tuple(range(0, sample.ndim - 3)) + (-2, -1, -3))
 
-    return lcs_vectors
+    return lcs_ddf_vectors
+
+def create_lcs_ddf_colored(lcs_ddf_matrices, lcs_ddf_vectors, solver, coloration):
+    """
+    Create a function to compute and colorize LCS DDF results.
+
+    Parameters:
+    - lcs_ddf_matrices: Function to compute matrices from the reference image.
+    - lcs_ddf_vectors: Function to compute vectors from the sample image.
+    - solver: Function to solve the matrices and vectors.
+    - coloration: Function to apply coloration to the result.
+
+    Returns:
+    - lcs_ddf_colored: Function to compute and colorize LCS DDF for given reference and sample images.
+    """
+    def lcs_ddf_colored(reference, sample, weak_absorption=True, m=None, n=None, **kwargs):
+        """
+        Compute and colorize LCS DDF results for given reference and sample images.
+
+        Parameters:
+        - reference: The reference image.
+        - sample: The sample image.
+        - weak_absorption: Boolean to indicate if weak absorption should be considered. Default is True.
+        - m: Optional parameter (not used in the current implementation).
+        - n: Optional parameter (not used in the current implementation).
+        - **kwargs: Additional parameters for the solver and coloration functions.
+          - `threshold` (float): The threshold value used to filter out small or insignificant values in calculations.
+          - `sigma` (float): The standard deviation for Gaussian filters used in smoothing operations.
+          - `epsilon` (float): A small value used to prevent division by zero or handle very small values.
+          - `nb_of_std` (int): The number of standard deviations used to normalize or scale values.
+          - `define_min` (bool): Flag indicating whether to define the minimum value based on mean and standard deviation.
+          - `input_range` (tuple or str): The range of input values for rescaling, or 'in_range' to use the minimum and maximum values from the input image.
+          - `output_range` (tuple or str): The desired range of output values after rescaling, or 'out_range' to use the default range (0 to 1).
+
+        Returns:
+        - Colored LCS DDF results.
+        """
+        matrices = lcs_ddf_matrices(reference)
+        vectors = lcs_ddf_vectors(sample)
+
+        
+        result = solver(matrices, vectors, **kwargs)
+        # result = solver(matrices, vectors, **kwargs)
+
+        if weak_absorption:
+            result
+        else:
+            result[..., 1:] /= result[..., :1]
+        
+    
+        return coloration(result,**kwargs)
+        
+
+    return lcs_ddf_colored
