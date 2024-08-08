@@ -1,7 +1,7 @@
 """
 """
 from scipy.ndimage import gaussian_filter
-
+from matplotlib.colors import hsv_to_rgb as htr
 def create_tikhonov_stack(xp):
     def tikhonov_stack(matrices, vectors, *, alpha):
         """
@@ -250,7 +250,7 @@ def create_laplace(xp):
 
 
 def prep_coloration(xp):
-    def From_tensor_to_elipse(result_stack):
+    def From_tensor_to_elipse(result_stack,**kwargs):
         """
         Transform tensor data into ellipse parameters and generate colored images.
 
@@ -283,25 +283,39 @@ def prep_coloration(xp):
         a22 = result_stack[..., 5] * result_stack[..., 4]
         a12 = 0.5 * (result_stack[..., 3] * result_stack[..., 5])
 
+        # Based on the formulae from Directional dark-field implicit x-ray speckle tracking using an anisotropic-diffusion Fokker-Planck equation Konstantin M. Pavlov * et al.
+        # gamma_eccentricity_sqrt = xp.sqrt(xp.abs((a11 - a22)**2 + 4 * a12**2))
+        # lambda_1 = (a11 + a22 + gamma_eccentricity_sqrt) / 2
+        # lambda_2 = (a11 + a22 - gamma_eccentricity_sqrt) / 2
+        # alpha = 1/xp.sqrt(xp.abs(lambda_2))
+        # beta = 1/xp.sqrt(xp.abs(lambda_1))
+        
+        mask = xp.logical_or(a11*a22 - a12**2 <= 0, a11*a22 <= 0)
+        
+        # eccentricity = normalize_values(xp, xp.where(mask, 0, xp.sqrt(xp.abs(1 - beta**2/alpha**2))), nb_of_std=nb_of_std, define_min=define_min)[..., None]
         theta = 0.5 * xp.arctan2(2 * a12, a11 - a22)
 
-        a = xp.sqrt(xp.abs(a11 * xp.cos(theta)**2 + a22 * xp.sin(theta)**2 + 2 * a12 * xp.cos(theta) * xp.sin(theta)))
-        b = xp.sqrt(xp.abs(a11 * xp.sin(theta)**2 + a22 * xp.cos(theta)**2 - 2 * a12 * xp.cos(theta) * xp.sin(theta)))
 
-        mask = xp.logical_or(a11*a22 - a12**2 <= 0, a11*a22 <= 0)
+        # Way used by LCSDFF of Laurene Quenot et al. see if it's better and right to use it
+        
+        alpha = xp.sqrt((xp.abs(a11 * xp.cos(theta)**2 + a22 * xp.sin(theta)**2 + 2 * a12 * xp.cos(theta) * xp.sin(theta))))
+        beta = xp.sqrt((xp.abs(a11 * xp.sin(theta)**2 + a22 * xp.cos(theta)**2 - 2 * a12 * xp.cos(theta) * xp.sin(theta))))
+        
+        eccentricity = normalize_values(xp, xp.where(mask, 0, alpha-beta), nb_of_std=nb_of_std, define_min=define_min)[..., None]
 
+        
+        
         theta = xp.where(theta < 0, theta + xp.pi, theta)
         theta = xp.where(theta >= 2*xp.pi, theta - 2*xp.pi, theta)
-        theta = xp.where(a < b, theta + xp.pi/2, theta)
+        theta = xp.where(alpha < beta, theta + xp.pi/2, theta)
         
-        eccentricity = normalize_values(xp, xp.where(mask, 0, a-b), nb_of_std=nb_of_std, define_min=define_min)[..., None]
-        
-        area = normalize_values(xp, xp.pi * a * b, nb_of_std=nb_of_std, define_min=define_min)[..., None]
+    
+        area = normalize_values(xp, xp.abs(xp.pi * alpha * beta) , nb_of_std=nb_of_std, define_min=False)[..., None]
         
         
         result_stack = clip_values(xp, result_stack, threshold=threshold, epsilon=epsilon)
         intensity = normalize_values(xp, xp.sqrt(result_stack[..., 3]**2 + result_stack[..., 4]**2 + result_stack[..., 5]**2), 
-                                     nb_of_std=nb_of_std, define_min=define_min)[..., None]
+                                     nb_of_std=nb_of_std, define_min=True)[..., None]
         
         
         result_stack = xp.concatenate((result_stack,
@@ -336,7 +350,7 @@ def prep_coloration(xp):
     
     
     
-def normalize_values(xp,image, nb_of_std=3, define_min=False,):
+def normalize_values(xp,image, nb_of_std=3, define_min=False):
     """
     Normalize the values of an image based on the mean and standard deviation.
 
@@ -354,9 +368,13 @@ def normalize_values(xp,image, nb_of_std=3, define_min=False,):
     - An array with normalized values in the range [0, 1].
     """
     mean = xp.mean(image)
+    
     std = xp.std(image)
+    
     min_value = mean - nb_of_std * std if define_min else 0
+    
     max_value = mean + nb_of_std * std
+    
     return xp.clip((image - min_value) / (max_value - min_value), 0, 1)
 
 
