@@ -284,24 +284,24 @@ def prep_coloration(xp):
         a12 = 0.5 * (result_stack[..., 3] * result_stack[..., 5])
 
         # Based on the formulae from Directional dark-field implicit x-ray speckle tracking using an anisotropic-diffusion Fokker-Planck equation Konstantin M. Pavlov * et al.
-        # gamma_eccentricity_sqrt = xp.sqrt(xp.abs((a11 - a22)**2 + 4 * a12**2))
-        # lambda_1 = (a11 + a22 + gamma_eccentricity_sqrt) / 2
-        # lambda_2 = (a11 + a22 - gamma_eccentricity_sqrt) / 2
-        # alpha = 1/xp.sqrt(xp.abs(lambda_2))
-        # beta = 1/xp.sqrt(xp.abs(lambda_1))
+        gamma_eccentricity_sqrt = xp.sqrt(xp.abs((a11 - a22)**2 + 4 * a12**2))
+        lambda_1 = (a11 + a22 + gamma_eccentricity_sqrt) / 2
+        lambda_2 = (a11 + a22 - gamma_eccentricity_sqrt) / 2
+        alpha = 1/xp.sqrt(xp.abs(lambda_2))
+        beta = 1/xp.sqrt(xp.abs(lambda_1))
         
         mask = xp.logical_or(a11*a22 - a12**2 <= 0, a11*a22 <= 0)
         
-        # eccentricity = normalize_values(xp, xp.where(mask, 0, xp.sqrt(xp.abs(1 - beta**2/alpha**2))), nb_of_std=nb_of_std, define_min=define_min)[..., None]
+        eccentricity = normalize_values(xp, xp.where(mask, 0, xp.sqrt(xp.abs(1 - beta**2/alpha**2))), nb_of_std=nb_of_std, define_min=define_min)[..., None]
         theta = 0.5 * xp.arctan2(2 * a12, a11 - a22)
 
 
-        # Way used by LCSDFF of Laurene Quenot et al. see if it's better and right to use it
+        # Way used by LCSDFF of Laurene Quenot et al. see if it's better and right to use it I think that there is a mistake in 
         
-        alpha = xp.sqrt((xp.abs(a11 * xp.cos(theta)**2 + a22 * xp.sin(theta)**2 + 2 * a12 * xp.cos(theta) * xp.sin(theta))))
-        beta = xp.sqrt((xp.abs(a11 * xp.sin(theta)**2 + a22 * xp.cos(theta)**2 - 2 * a12 * xp.cos(theta) * xp.sin(theta))))
+        # alpha = xp.sqrt((xp.abs(a11 * xp.cos(theta)**2 + a22 * xp.sin(theta)**2 + 2 * a12 * xp.cos(theta) * xp.sin(theta))))
+        # beta = xp.sqrt((xp.abs(a11 * xp.sin(theta)**2 + a22 * xp.cos(theta)**2 - 2 * a12 * xp.cos(theta) * xp.sin(theta))))
         
-        eccentricity = normalize_values(xp, xp.where(mask, 0, alpha-beta), nb_of_std=nb_of_std, define_min=define_min)[..., None]
+        # eccentricity = normalize_values(xp, xp.where(mask, 0, alpha-beta), nb_of_std=nb_of_std, define_min=define_min)[..., None]
 
         
         

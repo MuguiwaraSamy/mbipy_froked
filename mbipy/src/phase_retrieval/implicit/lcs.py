@@ -258,14 +258,15 @@ def create_lcs_ddf_colored(lcs_ddf_matrices, lcs_ddf_vectors, solver, coloration
         result = solver(matrices, vectors, **solver_kwargs)
         # result = solver(matrices, vectors, **kwargs)
         
-        
+        #That what is done in the original code of the LCS dont know if it is necessary
+        # result[..., 0] = 1 / result[..., 0]
         if weak_absorption:
             result
         else:
             result[..., 1:] /= result[..., :1]
         
         #That what is done in the original code of the LCS dont know if it is necessary
-        result[..., 0] = 1 / result[..., 0]
+        # result[..., 0] = 1 / result[..., 0]
         return coloration(result, **coloration_kwargs)
         
 
