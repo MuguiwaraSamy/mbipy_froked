@@ -245,7 +245,7 @@ def create_lcs_ddf_colored(lcs_ddf_matrices, lcs_ddf_vectors, solver, coloration
         """
         matrices = lcs_ddf_matrices(reference)
         vectors = lcs_ddf_vectors(sample)
-
+        
         solver_kwargs = {}
         coloration_kwargs = {}
 

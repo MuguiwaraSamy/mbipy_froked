@@ -279,6 +279,17 @@ def prep_coloration(xp):
         input_range = kwargs.get('input_range', 'in_range')
         output_range = kwargs.get('output_range', 'out_range')
         
+        result_stack[..., 3] = xp.nan_to_num(result_stack[..., 3], nan=1e-6)
+        result_stack[..., 4] = xp.nan_to_num(result_stack[..., 4], nan=1e-6)
+        result_stack[..., 5] = xp.nan_to_num(result_stack[..., 5], nan=1e-6)
+        
+        result_stack[..., 3] = xp.where(result_stack[..., 3] == 0, 1e-6, result_stack[..., 3])
+        result_stack[..., 5] = xp.where(result_stack[..., 5] == 0, 1e-6, result_stack[..., 5])
+        result_stack[..., 4] = xp.where(result_stack[..., 4] == 0, 1e-6*xp.sign(result_stack[..., 4]), result_stack[..., 4])
+        result_stack[..., 3] = xp.where(xp.abs(result_stack[..., 3]) > threshold, threshold, result_stack[..., 3])
+        result_stack[..., 5] = xp.where(xp.abs(result_stack[..., 5]) > threshold, threshold, result_stack[..., 5])
+        result_stack[..., 4] = xp.where(xp.abs(result_stack[..., 4]) > threshold, threshold*xp.sign(result_stack[..., 4]), result_stack[..., 4])
+        
         a11 = result_stack[..., 3] * result_stack[..., 4]
         a22 = result_stack[..., 5] * result_stack[..., 4]
         a12 = 0.5 * (result_stack[..., 3] * result_stack[..., 5])
@@ -287,13 +298,22 @@ def prep_coloration(xp):
         gamma_eccentricity_sqrt = xp.sqrt(xp.abs((a11 - a22)**2 + 4 * a12**2))
         lambda_1 = (a11 + a22 + gamma_eccentricity_sqrt) / 2
         lambda_2 = (a11 + a22 - gamma_eccentricity_sqrt) / 2
-        alpha = 1/xp.sqrt(xp.abs(lambda_2))
-        beta = 1/xp.sqrt(xp.abs(lambda_1))
+        alph = 1/xp.sqrt(xp.abs(lambda_2))
+        bet = 1/xp.sqrt(xp.abs(lambda_1))
+        
+        alpha = xp.nan_to_num(alph)
+        beta = xp.nan_to_num(bet)
+        print('nan on alpha',xp.isnan(alpha).any())
+        print('nan on beta',xp.isnan(beta).any())
         
         mask = xp.logical_or(a11*a22 - a12**2 <= 0, a11*a22 <= 0)
         
-        eccentricity = normalize_values(xp, xp.where(mask, 0, xp.sqrt(xp.abs(1 - beta**2/alpha**2))), nb_of_std=nb_of_std, define_min=define_min)[..., None]
+        eccentricity = normalize_values(xp, xp.where(mask, 0, xp.sqrt(xp.abs(1 - (beta**2/alpha**2)))), nb_of_std=nb_of_std, define_min=define_min)[..., None]
+        eccentricity =  xp.nan_to_num(eccentricity)
         theta = 0.5 * xp.arctan2(2 * a12, a11 - a22)
+        theta = xp.nan_to_num(theta)
+        print('nan on theta',xp.isnan(theta).any())
+        print('nan on eccentricity',xp.isnan(eccentricity).any())
 
 
         # Way used by LCSDFF of Laurene Quenot et al. see if it's better and right to use it I think that there is a mistake in 
@@ -306,12 +326,12 @@ def prep_coloration(xp):
         
         
         theta = xp.where(theta < 0, theta + xp.pi, theta)
-        theta = xp.where(theta >= 2*xp.pi, theta - 2*xp.pi, theta)
+        theta = xp.where(theta >= xp.pi, theta - xp.pi, theta)
         theta = xp.where(alpha < beta, theta + xp.pi/2, theta)
-        
+        print('nan on theta',xp.isnan(theta).any())
     
         area = normalize_values(xp, xp.abs(xp.pi * alpha * beta) , nb_of_std=nb_of_std, define_min=False)[..., None]
-        
+        print('nan on area',xp.isnan(area).any())
         
         result_stack = clip_values(xp, result_stack, threshold=threshold, epsilon=epsilon)
         intensity = normalize_values(xp, xp.sqrt(result_stack[..., 3]**2 + result_stack[..., 4]**2 + result_stack[..., 5]**2), 
@@ -426,10 +446,10 @@ def DDF_metrics(xp,results, sigma=5):
     wcos = wcos[padding_value:-padding_value, padding_value:-padding_value]
     wsin = wsin[padding_value:-padding_value, padding_value:-padding_value]
     
-    saturation = xp.sqrt(wcos**2 + wsin**2)
+    saturation =xp.sqrt( (wcos**2 + wsin**2)/2)
     theta_corrected = 0.5*xp.arctan2(wsin, wcos)
     theta_corrected = xp.where(theta_corrected < 0, theta_corrected + xp.pi, theta_corrected)
-    theta_corrected = xp.where(theta_corrected >= 2*xp.pi, theta_corrected - 2*xp.pi, theta_corrected)
+    theta_corrected = xp.where(theta_corrected >= xp.pi, theta_corrected - xp.pi, theta_corrected)
     theta_corrected = xp.where(xp.logical_and(wcos == 0, wsin == 0), 0, theta_corrected)
     
     return xp.concatenate((results, saturation[...,None], theta_corrected[...,None]), axis=-1)
