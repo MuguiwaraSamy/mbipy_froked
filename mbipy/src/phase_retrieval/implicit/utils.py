@@ -295,43 +295,41 @@ def prep_coloration(xp):
         a12 = 0.5 * (result_stack[..., 3] * result_stack[..., 5])
 
         # Based on the formulae from Directional dark-field implicit x-ray speckle tracking using an anisotropic-diffusion Fokker-Planck equation Konstantin M. Pavlov * et al.
-        gamma_eccentricity_sqrt = xp.sqrt(xp.abs((a11 - a22)**2 + 4 * a12**2))
-        lambda_1 = (a11 + a22 + gamma_eccentricity_sqrt) / 2
-        lambda_2 = (a11 + a22 - gamma_eccentricity_sqrt) / 2
-        alph = 1/xp.sqrt(xp.abs(lambda_2))
-        bet = 1/xp.sqrt(xp.abs(lambda_1))
+        # gamma_eccentricity_sqrt = xp.sqrt(xp.abs((a11 - a22)**2 + 4 * a12**2))
+        # lambda_1 = (a11 + a22 + gamma_eccentricity_sqrt) / 2
+        # lambda_2 = (a11 + a22 - gamma_eccentricity_sqrt) / 2
+        # alph = 1/xp.sqrt(xp.abs(lambda_2))
+        # bet = 1/xp.sqrt(xp.abs(lambda_1))
         
-        alpha = xp.nan_to_num(alph)
-        beta = xp.nan_to_num(bet)
-        print('nan on alpha',xp.isnan(alpha).any())
-        print('nan on beta',xp.isnan(beta).any())
+        # alpha = xp.nan_to_num(alph)
+        # beta = xp.nan_to_num(bet)
+
         
         mask = xp.logical_or(a11*a22 - a12**2 <= 0, a11*a22 <= 0)
         
-        eccentricity = normalize_values(xp, xp.where(mask, 0, xp.sqrt(xp.abs(1 - (beta**2/alpha**2)))), nb_of_std=nb_of_std, define_min=define_min)[..., None]
-        eccentricity =  xp.nan_to_num(eccentricity)
+        # eccentricity = normalize_values(xp, xp.where(mask, 0, xp.sqrt(xp.abs(1 - (beta**2/alpha**2)))), nb_of_std=nb_of_std, define_min=define_min)[..., None]
+        # eccentricity =  xp.nan_to_num(eccentricity)
         theta = 0.5 * xp.arctan2(2 * a12, a11 - a22)
         theta = xp.nan_to_num(theta)
-        print('nan on theta',xp.isnan(theta).any())
-        print('nan on eccentricity',xp.isnan(eccentricity).any())
+    
 
 
         # Way used by LCSDFF of Laurene Quenot et al. see if it's better and right to use it I think that there is a mistake in 
         
-        # alpha = xp.sqrt((xp.abs(a11 * xp.cos(theta)**2 + a22 * xp.sin(theta)**2 + 2 * a12 * xp.cos(theta) * xp.sin(theta))))
-        # beta = xp.sqrt((xp.abs(a11 * xp.sin(theta)**2 + a22 * xp.cos(theta)**2 - 2 * a12 * xp.cos(theta) * xp.sin(theta))))
+        alpha = xp.sqrt((xp.abs(a11 * xp.cos(theta)**2 + a22 * xp.sin(theta)**2 + 2 * a12 * xp.cos(theta) * xp.sin(theta))))
+        beta = xp.sqrt((xp.abs(a11 * xp.sin(theta)**2 + a22 * xp.cos(theta)**2 - 2 * a12 * xp.cos(theta) * xp.sin(theta))))
         
-        # eccentricity = normalize_values(xp, xp.where(mask, 0, alpha-beta), nb_of_std=nb_of_std, define_min=define_min)[..., None]
+        eccentricity = normalize_values(xp, xp.where(mask, 0, alpha-beta), nb_of_std=nb_of_std, define_min=define_min)[..., None]
 
         
         
         theta = xp.where(theta < 0, theta + xp.pi, theta)
         theta = xp.where(theta >= xp.pi, theta - xp.pi, theta)
         theta = xp.where(alpha < beta, theta + xp.pi/2, theta)
-        print('nan on theta',xp.isnan(theta).any())
+
     
         area = normalize_values(xp, xp.abs(xp.pi * alpha * beta) , nb_of_std=nb_of_std, define_min=False)[..., None]
-        print('nan on area',xp.isnan(area).any())
+
         
         result_stack = clip_values(xp, result_stack, threshold=threshold, epsilon=epsilon)
         intensity = normalize_values(xp, xp.sqrt(result_stack[..., 3]**2 + result_stack[..., 4]**2 + result_stack[..., 5]**2), 
@@ -581,7 +579,7 @@ def colored_image_generation(xp, hue, saturation, value, input_range='in_range',
     - An array representing the RGB image.
     """
     
-    hue_rescaled = rescale_intensity(xp, hue, in_range=input_range, out_range=output_range)
+    hue_rescaled = hue/xp.pi
     saturation_rescaled = rescale_intensity(xp, saturation, in_range=input_range, out_range=output_range)
     value_rescaled = rescale_intensity(xp, value, in_range=input_range, out_range=output_range)
     
