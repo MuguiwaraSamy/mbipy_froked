@@ -1,6 +1,6 @@
 """
 """
-from scipy.ndimage import gaussian_filter
+from cupyx.scipy.ndimage import gaussian_filter
 from matplotlib.colors import hsv_to_rgb as htr
 def create_tikhonov_stack(xp):
     def tikhonov_stack(matrices, vectors, *, alpha):
@@ -585,3 +585,21 @@ def colored_image_generation(xp, hue, saturation, value, input_range='in_range',
     
     hsv_image = xp.stack((hue_rescaled, saturation_rescaled, value_rescaled), axis=-1)
     return hsv_to_rgb(xp,hsv_image)
+
+
+def gaussian_filter(xp,image, sigma):
+    """
+    Apply a Gaussian filter to an image.
+
+    This function applies a Gaussian filter to the input image with the specified sigma value.
+
+    Parameters:
+    - xp: The array module (e.g., numpy, cupy) to use for array operations.
+    - image: Array representing the image to be filtered.
+    - sigma: Standard deviation for the Gaussian filter.
+
+    Returns:
+    - An array with the image filtered using a Gaussian filter.
+    """
+    
+    return xp.asarray(gaussian_filter(image, sigma=sigma, mode='reflect'))
